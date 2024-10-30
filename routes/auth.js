@@ -7,18 +7,19 @@ const jwt = require('jsonwebtoken')
 const multer = require('multer')
 require('dotenv').config()
 
-
 //models
 const User = require('../models/auth')
+const checkUser = require('../middlewire/checkUser')
 
 
 const jwtString = process.env.JWT_MESSAGE
-const  upload = multer()
+const upload = multer()
 
 const connectToMongo = async () => {
     mongose.connect(`${process.env.MONGODB_URL}`)
 }
 
+//api end point to create account
 router.post('/create',
     upload.none(),
     //express validation check
@@ -36,7 +37,7 @@ router.post('/create',
             return res.status(401).json({ error: result.array() })
         }
 
-        try { 
+        try {
             //connect mongodb 
             await connectToMongo();
 
@@ -49,21 +50,85 @@ router.post('/create',
                 firstname: req.body.firstname,
                 lastname: req.body.lastname,
                 email: req.body.email,
-                location: req.body.location, 
+                location: req.body.location,
                 password: encodedPassword,
                 tags: req.body.tags,
-                about: req.body.about 
+                about: req.body.about,
+                fileName: req.body.fileName
             })
             user.save()
 
             //create json web token
             const token = jwt.sign({ id: user._id }, jwtString)
-            return res.status(200).json({ error: false, message: "Account created successfully ", token , userId : user._id })
+
+            return res.status(200).json({
+                error: false,
+                message: "Account created successfully ",
+                token,
+                userId: user._id
+            })
         } catch (error) {
             return res.json({ error: true, message: error.message })
         }
 
 
     })
+
+//api endpoint to login 
+router.post('/login', checkUser, async (req, res) => {
+
+    if (req.userId !== req.body.userId) {
+        return res.status(401).json({ error: true, message: "Authentication denied" })
+    }
+
+    try {
+        //connect to mongodb
+        await connectToMongo()
+
+        const user = await User.findOne({ _id: req.userId, email: req.body.email })
+        console.log(user)
+        if (!user) {
+            return res.status(400).json({ error: true, message: "user not found" })
+        }
+        const checkPassword = await bcrypt.compare(`${req.body.password}`, `${user.password}`)
+        console.log(checkPassword)
+        if (!checkPassword) {
+            return res.status(401).json({ error: true, message: "Authentication denied" })
+        }
+        const token = jwt.sign({ id: user._id }, jwtString)
+
+        return res.status(200).json({
+            error: false,
+            message: "User log-in successfully",
+            userId: user._id,
+            token
+        })
+    } catch (error) {
+        return res.status(500).json({ error: true, message: error.message })
+    }
+})
+
+//api endpoint for fetch user data
+router.post('/fetch', checkUser, async (req, res) => {
+    if (req.userId !== req.body.userId) {
+        return res.status(401).json({ error: true, message: "Authentication denied" })
+    }
+
+    try {
+        //connect to mongodb
+        await connectToMongo()
+
+        const user = await User.findById(req.userId).select('-password')
+        console.log(user)
+        if (!user) {
+            return res.status(400).json({ error: true, message: "user not found" })
+        }
+
+        return res.status(200).json({error : false , user})
+
+    } catch (error) {
+        return res.status(500).json({ error: true, message: error.message })
+    }
+})
 
 module.exports = router

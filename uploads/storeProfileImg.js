@@ -1,34 +1,49 @@
 const express = require('express')
+const app = express()
 const router = express.Router()
 const multer = require('multer')
 const path = require('path')
+const { v4: uuidv4 } = require('uuid')
 
+//models
+const User = require('../models/auth')
 
-// Storage configuration for multer
+router.use((req, res, next) => {
+    req.id = uuidv4() + Date.now()
+    next();
+})
+
+//storage for files
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const pathname = path.join(__dirname, '..', 'assets', 'profileImg');
-        cb(null, pathname);
+        const destPath = file.fieldname === "profileImg" ?
+            path.join(__dirname, '../assets/profileImg') :
+            path.join(__dirname, '../assets/backgroundImg')
+
+        cb(null, destPath)
     },
     filename: (req, file, cb) => {
-        const extension = path.extname(file.originalname);
-        // Log the request body to check if userId is present
-        console.log(req.body);
-        cb(null, `${req.body.userId}${extension}`); // Ensure userId is accessed here
+        const extension = path.extname(file.originalname)
+        cb(null, req.id + extension)
     }
-});
+})
 
-const upload = multer({ storage });
+const upload = multer({ storage })
 
-// Route for uploading images
 router.post('/profileImg',
-    upload.fields([{ name: 'profileImg' }, { name: 'backgroundImg' }]), // Note: userId should not be included here
+    upload.fields([{ name: "profileImg" }, { name: "backgroundImg" }]),
     async (req, res) => {
-        console.log(req.body.userId); // Log the userId to see if it's being passed correctly
-        // Your logic here (e.g., save user details to the database)
-        return res.json({ message: "Files uploaded successfully", userId: req.body.userId });
+        try {
+            console.log(req.id)
+            return res.status(200).json({
+                error: false,
+                message: "image uploaded successfully",
+                pathId: req.id,
+            })
+        } catch (error) {
+            return res.status(500).json({ error: true, message: error.message })
+        }
     }
-);
+)
 
-module.exports = router;
-
+module.exports = router
