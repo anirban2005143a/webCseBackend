@@ -5,19 +5,33 @@ const { body, validationResult } = require('express-validator')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const multer = require('multer')
+const path = require('path')
+const archiver = require('archiver');
+const fs = require('fs');
 require('dotenv').config()
 
 //models
 const User = require('../models/auth')
+
 const checkUser = require('../middlewire/checkUser')
-
-
 const jwtString = process.env.JWT_MESSAGE
 const upload = multer()
 
 const connectToMongo = async () => {
     mongose.connect(`${process.env.MONGODB_URL}`)
 }
+
+//api endpopint to is token and userid belongs to same user
+router.post('/checkUser', checkUser, async (req, res) => {
+    try {
+        if (req.userId !== req.body.userId) {
+            return res.status(401).json({ error: true, message: "Authentication denied" })
+        }
+        return res.status(200).json({ error: false, message: "Authorized" })
+    } catch (error) {
+        return res.status(500).json({ error: true, message: error.message })
+    }
+})
 
 //api end point to create account
 router.post('/create',
@@ -119,16 +133,74 @@ router.post('/fetch', checkUser, async (req, res) => {
         await connectToMongo()
 
         const user = await User.findById(req.userId).select('-password')
-        console.log(user)
+        // console.log(user)
         if (!user) {
             return res.status(400).json({ error: true, message: "user not found" })
         }
 
-        return res.status(200).json({error : false , user})
+        return res.status(200).json({ error: false, user })
 
     } catch (error) {
         return res.status(500).json({ error: true, message: error.message })
     }
 })
+
+//api endpoint for serve static images
+router.get('/images', async (req, res) => {
+
+    const filename = req.query.filename
+    const userId = req.query.userId
+    const token = req.query.token
+    console.log(filename,userId)
+  
+    if (!userId || !token || !filename) {
+        return res.status(401).json({ error: true, message: "Unauthorized access" })
+    }
+
+    try {
+        await connectToMongo()
+
+        const user = await User.findOne({ _id: userId, fileName: filename })
+        if (!user) {
+            return res.status(401).json({ error: true, message: "User not found" })
+        }
+
+        const archive = archiver('zip')
+        res.attachment('images.zip')
+
+        archive.pipe(res)
+        
+        const profileImg = path.join(__dirname, 'assets/profileImg', filename);
+        const backgroundImg = path.join(__dirname, 'assets/backgroundImg', filename);
+
+        console.log("Checking images...");
+
+        if (fs.existsSync(profileImg)) {
+            archive.file(profileImg, { name: 'profileImg.jpg' });
+        } else {
+            console.log(`Profile image not found: ${profileImg}`);
+        }
+
+        if (fs.existsSync(backgroundImg)) {
+            archive.file(backgroundImg, { name: 'backgroundImg.jpg' });
+        } else {
+            console.log(`Background image not found: ${backgroundImg}`);
+        }
+
+        archive.finalize().catch(err => {
+            console.error('Error finalizing archive:', err);
+            res.status(500).send('Internal Server Error');
+        });
+
+        res.on('close', () => {
+            console.log('ZIP file sent successfully');
+        });
+
+    } catch (error) {
+        return res.status(500).json({ error: true, message: error.message })
+    }
+})
+
+
 
 module.exports = router

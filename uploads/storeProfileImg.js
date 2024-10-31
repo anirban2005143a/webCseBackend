@@ -23,8 +23,7 @@ const storage = multer.diskStorage({
         cb(null, destPath)
     },
     filename: (req, file, cb) => {
-        const extension = path.extname(file.originalname)
-        cb(null, req.id + extension)
+        cb(null, req.id + ".jpg")
     }
 })
 
@@ -34,7 +33,6 @@ router.post('/profileImg',
     upload.fields([{ name: "profileImg" }, { name: "backgroundImg" }]),
     async (req, res) => {
         try {
-            console.log(req.id)
             return res.status(200).json({
                 error: false,
                 message: "image uploaded successfully",
