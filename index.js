@@ -6,7 +6,7 @@ const cookieParse = require('cookie-parser')
 require('dotenv').config(); 
 
 const Auth = require('./routes/auth')
-const Upload = require('./uploads/storeProfileImg')
+const Upload = require('./routes/uploads/storeProfileImg')
 
 app.use(cors());
 app.use(express.json());

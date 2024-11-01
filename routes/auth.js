@@ -5,15 +5,14 @@ const { body, validationResult } = require('express-validator')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const multer = require('multer')
-const path = require('path')
-const archiver = require('archiver');
-const fs = require('fs');
 require('dotenv').config()
 
 //models
 const User = require('../models/auth')
-
+//functions and middlewire
 const checkUser = require('../middlewire/checkUser')
+const serverImg = require('../functions/serverImg')
+
 const jwtString = process.env.JWT_MESSAGE
 const upload = multer()
 
@@ -122,6 +121,31 @@ router.post('/login', checkUser, async (req, res) => {
     }
 })
 
+//api end point to edit profile
+router.post('/edit', checkUser, async (req, res) => {
+    if (req.userId !== req.body.userId) {
+        return res.status(401).json({ error: true, message: "Authentication denied" })
+    }
+    try {
+        await connectToMongo()
+        let user = await User.findById(req.userId)
+        if (!user) {
+            return res.status(401).json({ error: true, message: "user not found" })
+        }
+        //check if 
+        const editUser = await User.findByIdAndUpdate(req.userId, {
+            location: req.body.location,
+            tags: req.body.tags,
+            about: req.body.about,
+        }).select('-password')
+
+        user = await User.findById(req.userId)
+        return res.status(200).json({ error: false, message: "User updated successfully", user })
+    } catch (error) {
+        return res.status(500).json({ error: true, message: error.message })
+    }
+})
+
 //api endpoint for fetch user data
 router.post('/fetch', checkUser, async (req, res) => {
     if (req.userId !== req.body.userId) {
@@ -146,13 +170,14 @@ router.post('/fetch', checkUser, async (req, res) => {
 })
 
 //api endpoint for serve static images
-router.get('/images', async (req, res) => {
+router.get('/profileImg', async (req, res) => {
 
     const filename = req.query.filename
     const userId = req.query.userId
     const token = req.query.token
-    console.log(filename,userId)
-  
+
+    // console.log(filename)
+
     if (!userId || !token || !filename) {
         return res.status(401).json({ error: true, message: "Unauthorized access" })
     }
@@ -160,41 +185,38 @@ router.get('/images', async (req, res) => {
     try {
         await connectToMongo()
 
-        const user = await User.findOne({ _id: userId, fileName: filename })
+        const user = await User.findOne({ _id: new mongose.Types.ObjectId(userId), fileName: filename })
+
         if (!user) {
             return res.status(401).json({ error: true, message: "User not found" })
         }
+        serverImg(req, res, filename, "profileImg")
 
-        const archive = archiver('zip')
-        res.attachment('images.zip')
+    } catch (error) {
+        return res.status(500).json({ error: true, message: error.message })
+    }
+})
 
-        archive.pipe(res)
-        
-        const profileImg = path.join(__dirname, 'assets/profileImg', filename);
-        const backgroundImg = path.join(__dirname, 'assets/backgroundImg', filename);
+//api endpoint for serve static images
+router.get('/backgroundImg', async (req, res) => {
 
-        console.log("Checking images...");
+    const filename = req.query.filename
+    const userId = req.query.userId
+    const token = req.query.token
 
-        if (fs.existsSync(profileImg)) {
-            archive.file(profileImg, { name: 'profileImg.jpg' });
-        } else {
-            console.log(`Profile image not found: ${profileImg}`);
+    if (!userId || !token || !filename) {
+        return res.status(401).json({ error: true, message: "Unauthorized access" })
+    }
+
+    try {
+        await connectToMongo()
+
+        const user = await User.findOne({ _id: new mongose.Types.ObjectId(userId), fileName: filename })
+
+        if (!user) {
+            return res.status(401).json({ error: true, message: "User not found" })
         }
-
-        if (fs.existsSync(backgroundImg)) {
-            archive.file(backgroundImg, { name: 'backgroundImg.jpg' });
-        } else {
-            console.log(`Background image not found: ${backgroundImg}`);
-        }
-
-        archive.finalize().catch(err => {
-            console.error('Error finalizing archive:', err);
-            res.status(500).send('Internal Server Error');
-        });
-
-        res.on('close', () => {
-            console.log('ZIP file sent successfully');
-        });
+        serverImg(req, res, filename, "backgroundImg")
 
     } catch (error) {
         return res.status(500).json({ error: true, message: error.message })
@@ -202,5 +224,4 @@ router.get('/images', async (req, res) => {
 })
 
 
-
-module.exports = router
+module.exports = router 

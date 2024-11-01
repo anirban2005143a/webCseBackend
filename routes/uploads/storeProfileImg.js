@@ -6,7 +6,7 @@ const path = require('path')
 const { v4: uuidv4 } = require('uuid')
 
 //models
-const User = require('../models/auth')
+const User = require('../../models/auth')
 
 router.use((req, res, next) => {
     req.id = uuidv4() + Date.now()
@@ -17,8 +17,8 @@ router.use((req, res, next) => {
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const destPath = file.fieldname === "profileImg" ?
-            path.join(__dirname, '../assets/profileImg') :
-            path.join(__dirname, '../assets/backgroundImg')
+            path.join(__dirname, '../../assets/profileImg') :
+            path.join(__dirname, '../../assets/backgroundImg')
 
         cb(null, destPath)
     },
