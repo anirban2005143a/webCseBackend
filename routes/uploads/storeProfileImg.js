@@ -37,7 +37,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
     storage: storage,
-    limits: { fileSize: 10 * 1024 * 1024 }
+    limits: { fileSize: 15 * 1024 * 1024 }
 })
 
 //save profile image
@@ -69,7 +69,7 @@ router.post('/edit/img',
             await connectToMongo()
 
             let user = await User.findById(req.userId)
-            console.log(user)
+
             if (!user) {
                 return res.status(401).json({ error: true, message: "user not found" })
             }
@@ -90,7 +90,7 @@ router.post('/edit/img',
             console.log(error)
             return res.status(500).json({ error: true, message: error.message })
         }
-    })
+})
 
 
 module.exports = router

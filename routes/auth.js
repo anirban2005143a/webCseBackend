@@ -89,17 +89,13 @@ router.post('/create',
     })
 
 //api endpoint to login 
-router.post('/login', checkUser, async (req, res) => {
-
-    if (req.userId !== req.body.userId) {
-        return res.status(401).json({ error: true, message: "Authentication denied" })
-    }
+router.post('/login', async (req, res) => {
 
     try {
         //connect to mongodb
         await connectToMongo()
 
-        const user = await User.findOne({ _id: req.userId, email: req.body.email })
+        const user = await User.findOne({email : req.body.email})
         console.log(user)
         if (!user) {
             return res.status(400).json({ error: true, message: "user not found" })
