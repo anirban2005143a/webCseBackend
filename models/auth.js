@@ -30,7 +30,11 @@ const userscheme = new mongose.Schema({
         type:String,
         required : true,
     },
-    fileName : {
+    profileImg : {
+        type : String,
+        default : ""
+    },
+    backgroundImg : {
         type : String,
         default : ""
     }

@@ -67,7 +67,8 @@ router.post('/create',
                 password: encodedPassword,
                 tags: req.body.tags,
                 about: req.body.about,
-                fileName: req.body.fileName
+                profileImg: req.body.fileName,
+                backgroundImg: req.body.fileName
             })
             user.save()
 
@@ -132,12 +133,14 @@ router.post('/edit', checkUser, async (req, res) => {
         if (!user) {
             return res.status(401).json({ error: true, message: "user not found" })
         }
-        //check if 
-        const editUser = await User.findByIdAndUpdate(req.userId, {
+        //edit profile info
+        const editObj = {
             location: req.body.location,
             tags: req.body.tags,
             about: req.body.about,
-        }).select('-password')
+        }
+        req.body.profileImg ? editObj.profileImg = req.body.profileImg : ""
+        const editUser = await User.findByIdAndUpdate(req.userId, editObj ).select('-password')
 
         user = await User.findById(req.userId)
         return res.status(200).json({ error: false, message: "User updated successfully", user })
@@ -146,7 +149,7 @@ router.post('/edit', checkUser, async (req, res) => {
     }
 })
 
-//api endpoint for fetch user data
+//api endpoint for fetch user data  
 router.post('/fetch', checkUser, async (req, res) => {
     if (req.userId !== req.body.userId) {
         return res.status(401).json({ error: true, message: "Authentication denied" })
@@ -168,7 +171,7 @@ router.post('/fetch', checkUser, async (req, res) => {
         return res.status(500).json({ error: true, message: error.message })
     }
 })
-
+  
 //api endpoint for serve static images
 router.get('/profileImg', async (req, res) => {
 
@@ -185,8 +188,8 @@ router.get('/profileImg', async (req, res) => {
     try {
         await connectToMongo()
 
-        const user = await User.findOne({ _id: new mongose.Types.ObjectId(userId), fileName: filename })
-
+        const user = await User.findOne({ _id: new mongose.Types.ObjectId(userId) })
+        // console.log(user)
         if (!user) {
             return res.status(401).json({ error: true, message: "User not found" })
         }
@@ -211,7 +214,7 @@ router.get('/backgroundImg', async (req, res) => {
     try {
         await connectToMongo()
 
-        const user = await User.findOne({ _id: new mongose.Types.ObjectId(userId), fileName: filename })
+        const user = await User.findOne({ _id: new mongose.Types.ObjectId(userId), backgroundImg: filename })
 
         if (!user) {
             return res.status(401).json({ error: true, message: "User not found" })
@@ -222,8 +225,5 @@ router.get('/backgroundImg', async (req, res) => {
         return res.status(500).json({ error: true, message: error.message })
     }
 })
-
-
-
 
 module.exports = router 

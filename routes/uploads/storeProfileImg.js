@@ -3,10 +3,18 @@ const app = express()
 const router = express.Router()
 const multer = require('multer')
 const path = require('path')
+const mongoose = require('mongoose')
+const fs = require('fs')
 const { v4: uuidv4 } = require('uuid')
 
 //models
 const User = require('../../models/auth')
+const checkUser = require('../../middlewire/checkUser')
+
+
+const connectToMongo = async () => {
+    mongoose.connect(`${process.env.MONGODB_URL}`)
+}
 
 router.use((req, res, next) => {
     req.id = uuidv4() + Date.now()
@@ -27,8 +35,12 @@ const storage = multer.diskStorage({
     }
 })
 
-const upload = multer({ storage })
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 10 * 1024 * 1024 }
+})
 
+//save profile image
 router.post('/profileImg',
     upload.fields([{ name: "profileImg" }, { name: "backgroundImg" }]),
     async (req, res) => {
@@ -43,5 +55,42 @@ router.post('/profileImg',
         }
     }
 )
+
+//edit images of a existing location
+router.post('/edit/img',
+    checkUser,
+    upload.single('profileImg'),
+     async (req, res) => {
+        if (req.userId !== req.body.userId) {
+            return res.status(401).json({ error: true, message: "Authentication denied" })
+        }
+
+        try {
+            await connectToMongo()
+
+            let user = await User.findById(req.userId)
+            console.log(user)
+            if (!user) {
+                return res.status(401).json({ error: true, message: "user not found" })
+            }
+            //delete old img
+            const filePath = path.join(__dirname, '../../assets/profileImg', user.fileName + ".jpg")
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath)
+                console.log("img deleted")
+            }
+
+            return res.status(200).json({
+                error: false,
+                message: "image uploaded successfully",
+                pathId: req.id,
+            })
+
+        } catch (error) {
+            console.log(error)
+            return res.status(500).json({ error: true, message: error.message })
+        }
+    })
+
 
 module.exports = router
