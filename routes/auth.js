@@ -54,12 +54,18 @@ router.post('/create',
             //connect mongodb 
             await connectToMongo();
 
+            //check if usre with same email exist or not
+            let user = await User.findOne({email : req.body.email})
+            if(user){
+                return res.status(401).json({error:true , message : "User already exist with same email . Please use another email"})
+            }
+
             //generate hash password
             const salt = await bcrypt.genSalt(10)
             const encodedPassword = bcrypt.hashSync(req.body.password, salt)
 
             //create new user
-            const user = new User({
+            user = new User({
                 firstname: req.body.firstname,
                 lastname: req.body.lastname,
                 email: req.body.email,
@@ -96,7 +102,7 @@ router.post('/login', async (req, res) => {
         await connectToMongo()
 
         const user = await User.findOne({email : req.body.email})
-        console.log(user)
+        // console.log(user)
         if (!user) {
             return res.status(400).json({ error: true, message: "user not found" })
         }
