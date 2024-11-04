@@ -13,6 +13,7 @@ const checkUser = (req,res,next)=>{
     try {
         const token = jwt.verify(userToken , jwtString)
         req.userId = token.id
+        console.log(token.id)
         next()
     } catch (error) {
         return res.status(500).json({error : true , message : error.message})
